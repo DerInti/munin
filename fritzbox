@@ -1,0 +1,66 @@
+#! /usr/bin/env ruby
+#%# family=manual
+
+require 'savon'
+
+#Hash for sync values
+sync = {}
+sync[:endpoint] = "http://192.168.178.1:49000/upnp/control/WANCommonIFC1"
+sync[:namespace] = "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1"
+sync[:action] = "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1#GetCommonLinkProperties"
+sync[:function] = :GetCommonLinkProperties
+#Hash for throughput
+rate = {}
+rate[:endpoint] = sync[:endpoint]
+rate[:namespace] = sync[:namespace]
+rate[:action] = { up: "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1#GetTotalBytesSent" }
+rate[:action][:down] = "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1#GetTotalBytesReceived" 
+rate[:function] = { up: :GetTotalBytesSent }
+rate[:function][:down] = :GetTotalBytesReceived
+rate[:response] = {}
+
+if ARGV[0] == "config" then
+	puts "host_name fritzbox"
+	puts "graph_category network"
+	puts "graph_title  fritz.box - Throughput on WAN interface"
+	puts "graph_args --base 1000"
+	puts "graph_scale yes"
+	puts "graph_vlabel bits in (-) / out (+) per \${graph_period}"
+	puts "recv.label inbound"
+	puts "recv.type DERIVE"
+	puts "recv.graph no"
+	puts "recv.cdef recv,8,*"
+	puts "recv.min 0"
+	puts "send.label bps" 
+	puts "send.type DERIVE"
+	puts "send.cdef send,8,*"
+	puts "send.min 0"
+	puts "send.negative recv"
+	puts "send.draw AREA"
+	puts "send.colour 33CC33"
+	puts "recvmax.label rmax"
+	puts "recvmax.type GAUGE"
+	puts "recvmax.graph no"
+	puts "sendmax.label Link"
+	puts "sendmax.type GAUGE"
+	puts "sendmax.negative recvmax"
+	puts "sendmax.draw LINE1"
+	puts "sendmax.colour FF0000"
+else
+	client = Savon.client(endpoint: sync[:endpoint], namespace: sync[:namespace])
+	
+	sync[:response] = client.call(sync[:function], soap_action: sync[:action]).body[:get_common_link_properties_response]
+	sync[:up] = sync[:response][:new_layer1_upstream_max_bit_rate]
+	sync[:down] = sync[:response][:new_layer1_downstream_max_bit_rate]
+	
+	rate[:action].each do |dir,value|
+		rate[:response][dir] = client.call(rate[:function][dir], soap_action: rate[:action][dir]).body
+	end
+	rate[:up] = rate[:response][:up][:get_total_bytes_sent_response][:new_total_bytes_sent]
+	rate[:down] = rate[:response][:down][:get_total_bytes_received_response][:new_total_bytes_received]
+	puts "recv.value #{rate[:down]}"
+	puts "send.value #{rate[:up]}"
+	puts "recvmax.value #{sync[:down]}"
+	puts "sendmax.value #{sync[:up]}"
+
+end

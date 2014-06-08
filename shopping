@@ -1,0 +1,226 @@
+#! /usr/bin/env ruby
+#%# family=manual
+
+require 'typhoeus'
+require 'nokogiri'
+
+class Product
+    attr_reader :product_id
+    attr_reader :price
+    attr_reader :description
+
+    def initialize(product_id, base_url = nil)
+        @product_id = product_id
+        @base_url   = base_url
+        @product_url = base_url+product_id
+
+        source = get_html(@product_url)
+        @price = strip_price_from_html(source)
+        @description = strip_descr_from_html(source)
+    end
+
+    private 
+    def get_html(product_url)
+        request = Typhoeus::Request.new(product_url, :followlocation=> true, :method=>:get, headers: { "User-Agent" => random_ua })
+        request.on_failure { |response| raise "ERROR: #{response.response_code} - #{response.return_message}" } 
+        request.run.body
+    end
+    private
+    def strip_price_from_html(source, xpath)
+        selector = Nokogiri::HTML(source)
+        price = selector.xpath(xpath)
+        if price.empty? then
+            raise 'Price is empty, data could net be parsed from source'
+        else
+            price = price.to_s.sub(/EUR /, '').sub(/,/, '.')
+            price
+        end
+    end
+
+    private 
+    def strip_descr_from_html(source, xpath)
+        selector = Nokogiri::HTML(source)
+        product = selector.xpath(xpath)
+        if product.empty? then
+            raise 'Description is emtpy, data could not be parsed from source'
+        else
+            product = product.to_s.strip.force_encoding 'utf-8'
+            product
+        end
+    end
+
+    private
+    def random_ua
+        user_agent_list = [
+                            'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:29.0) Gecko/20100101 Firefox/29.0',
+                            'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.114 Safari/537.36',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/537.75.14',
+                            'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.137 Safari/537.36',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.114 Safari/537.36',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:29.0) Gecko/20100101 Firefox/29.0',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.76.4 (KHTML, like Gecko) Version/7.0.4 Safari/537.76.4',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.114 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.114 Safari/537.36',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.137 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:29.0) Gecko/20100101 Firefox/29.0',
+                            'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/7.0.3 Safari/537.75.14',
+                            'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:29.0) Gecko/20100101 Firefox/29.0',
+                            'Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko',
+                            'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.137 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.1; rv:29.0) Gecko/20100101 Firefox/29.0',
+                            'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.114 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 5.1; rv:29.0) Gecko/20100101 Firefox/29.0',
+                            'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.137 Safari/537.36',
+                            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.132 Safari/537.36',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.137 Safari/537.36',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:28.0) Gecko/20100101 Firefox/28.0',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:29.0) Gecko/20100101 Firefox/29.0',
+                            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/34.0.1847.116 Chrome/34.0.1847.116 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.2; WOW64; rv:27.0) Gecko/20100101 Firefox/27.0',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.74.9 (KHTML, like Gecko) Version/7.0.2 Safari/537.74.9',
+                            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.114 Safari/537.36',
+                            'Mozilla/5.0 (X11; Linux x86_64; rv:29.0) Gecko/20100101 Firefox/29.0',
+                            'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.114 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36',
+                            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.137 Safari/537.36',
+                            'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; WOW64; Trident/5.0)',
+                            'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.137 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.2; WOW64; rv:29.0) Gecko/20100101 Firefox/29.0',
+                            'Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; rv:11.0) like Gecko',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/6.1.3 Safari/537.75.14',
+                            'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/534.59.10 (KHTML, like Gecko) Version/5.1.9 Safari/534.59.10',
+                            'Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:29.0) Gecko/20100101 Firefox/29.0',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.114 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.1; rv:28.0) Gecko/20100101 Firefox/28.0',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.137 Safari/537.36',
+                            'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)',
+                            'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.114 Safari/537.36',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.6; rv:29.0) Gecko/20100101 Firefox/29.0',
+                            'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.137 Safari/537.36',
+                            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1700.107 Safari/537.36',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.7; rv:29.0) Gecko/20100101 Firefox/29.0',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) AppleWebKit/537.75.14 (KHTML, like Gecko) Version/6.1.3 Safari/537.75.14',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.116 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:24.0) Gecko/20100101 Firefox/24.0',
+                            'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:28.0) Gecko/20100101 Firefox/28.0',
+                            'Mozilla/5.0 (Windows NT 5.1; rv:28.0) Gecko/20100101 Firefox/28.0',
+                            'Mozilla/5.0 (X11; Linux x86_64; rv:24.0) Gecko/20100101 Firefox/24.0',
+                            'Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; Touch; rv:11.0) like Gecko',
+                            'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.132 Safari/537.36',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_5) AppleWebKit/536.30.1 (KHTML, like Gecko) Version/6.0.5 Safari/536.30.1',
+                            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.152 Safari/537.36',
+                            'Mozilla/5.0 (Windows NT 6.0; rv:29.0) Gecko/20100101 Firefox/29.0',
+                            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.8; rv:28.0) Gecko/20100101 Firefox/28.0' ]
+        user_agent_list.sample
+    end
+    public
+    def print_munin_config(category, title)
+        puts "host_name shopping"
+        puts "graph_category #{category}"
+        puts "graph_title #{@description} - #{title}"
+        puts "graph_args --base 1000 -l 0 -A"
+        puts "graph_scale no"
+        puts "graph_vlabel Preis in EUR"
+        puts "preis.label Preis in EUR"
+        puts "preis.info Preis in EUR für #{@description} (#{@product_url})"
+        puts "preis.draw LINE2"
+        puts "preis.type GAUGE"
+    end
+    public
+    def print_munin_price
+        puts "preis.value #{@price}"
+    end
+end
+
+class AmazonProduct < Product
+    def initialize(asin)
+        super(asin, 'http://www.amazon.de/gp/product/')
+    end
+    private
+    def strip_price_from_html(source)
+        super(source, "//b[@class='priceLarge']/text()")
+        rescue RuntimeError
+            super(source, "//span[@id='priceblock_ourprice' and @class]/text()")
+    end
+    private
+    def strip_descr_from_html(source)
+        super(source, "//div/h1/span[@id='btAsinTitle']/span[1]/text()")
+        rescue RuntimeError
+            super(source, "//span[@id='productTitle']/text()")
+    end
+    public
+    def print_munin_config
+        super('amazon', 'Amazon')
+    end
+end
+
+class MindfactoryProduct < Product
+    def initialize(uri)
+        super(uri, 'http://www.mindfactory.de/product_info.php/')
+    end
+    private
+    def strip_price_from_html(source)
+        super(source, "string(//span[@itemprop='price']/@content)")
+    end
+    private
+    def strip_descr_from_html(source)
+        super(source, "//h1[@itemprop='name']/text()")
+    end
+    public
+    def print_munin_config
+        super('mindfactory', 'Mindfactory')
+    end
+end
+
+class MixComputerProduct < Product
+    def initialize(id)
+        super(id, 'http://www.mix-computer.de/html/product/detail.html?articleId=')
+    end
+    private 
+    def strip_price_from_html(source)
+        super(source, "string(//div[@itemprop='price']/@content)")
+    end
+    private
+    def strip_descr_from_html(source)
+        super(source, "//span[@itemprop='name']/text()")
+    end
+    public
+    def print_munin_config
+        super('mixcomputer', 'MixComputer')
+    end
+end
+
+##########################################################################################
+
+called_as = File.basename($0)
+case 
+    when called_as.start_with?('amazon_')
+        prod = AmazonProduct.new(called_as.sub(/amazon_/, ''))
+    when called_as.start_with?('mindfactory_')
+        prod = MindfactoryProduct.new(called_as.sub(/mindfactory_/, ''))
+    when called_as.start_with?('mixcomputer_')
+        prod = MixComputerProduct.new(called_as.sub(/mixcomputer_/, ''))
+    else
+        raise "Invalid call scheme."
+end
+
+if ARGV[0] == "config" then
+    prod.print_munin_config
+else
+    prod.print_munin_price
+end
+
+##########################################################################################
+# vim: foldmethod=manual tabstop=4 expandtab autoindent 
