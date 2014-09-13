@@ -5,7 +5,7 @@ require 'savon'
 
 #Hash for sync values
 sync = {}
-sync[:endpoint] = "http://192.168.178.1:49000/upnp/control/WANCommonIFC1"
+sync[:endpoint] = "http://192.168.178.1:49000/igdupnp/control/WANCommonIFC1"
 sync[:namespace] = "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1"
 sync[:action] = "urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1#GetCommonLinkProperties"
 sync[:function] = :GetCommonLinkProperties
